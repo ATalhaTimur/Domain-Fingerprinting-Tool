@@ -1,6 +1,10 @@
 import os
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+load_dotenv()
 
 from application.services.analyzer_service import AnalyzerService
 from application.services.collector_service import CollectorService
@@ -24,6 +28,12 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Domain-Fingerprinting-Tool")
 
     app.add_middleware(ErrorHandlerMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     cache = RedisCache() if os.getenv("APP_ENV") == "production" else SqliteCache()
 

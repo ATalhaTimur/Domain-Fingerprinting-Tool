@@ -331,7 +331,7 @@ from core.ports.ai_port import IAIAnalyzer
 from infrastructure.ai.prompts import PROMPTS
 
 class ClaudeAnalyzer(IAIAnalyzer):
-    MODEL = "claude-sonnet-4-20250514"
+    MODEL = "claude-sonnet-4-6"
 
     async def analyze(self, relations_text: str, mode: str = "technical") -> str:
         async with httpx.AsyncClient(timeout=30) as client:
@@ -403,18 +403,19 @@ FastAPI is just a delivery wire. It calls use cases, nothing else.
 
 ```python
 # api/routes/scan.py
-from fastapi import APIRouter, Depends
-from application.use_cases.scan_domain import ScanDomainUseCase
+from fastapi import APIRouter, Request
 from application.dto.scan_request import ScanRequestDTO
 
 router = APIRouter(prefix="/api/v1")
 
 @router.post("/scan")
-async def scan(request: ScanRequestDTO, use_case: ScanDomainUseCase = Depends()):
-    return await use_case.execute(request)
+async def scan(body: ScanRequestDTO, request: Request):
+    use_case = request.app.state.scan_use_case
+    result = await use_case.execute(body)
+    return result.to_dict()   # .to_dict() required — RiskScore is a dataclass
 ```
 
-Routes do not contain business logic. They validate input, call a use case, return the result.
+Routes do not contain business logic. They validate input, call a use case, return the result. `to_dict()` is called explicitly so FastAPI serializes `RiskScore` as a plain integer rather than `{"value": N}`.
 
 ---
 

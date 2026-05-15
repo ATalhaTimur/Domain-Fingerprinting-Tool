@@ -5,7 +5,7 @@
 | Component | Platform | Plan |
 |-----------|----------|------|
 | Backend (FastAPI) | Render.com | Free |
-| Frontend (D3.js) | Vercel | Free |
+| Frontend (Vue 3 + Vite) | Vercel | Free |
 | Cache (dev) | SQLite | Free |
 | Cache (prod) | Render Redis | Free |
 | CI/CD | GitHub Actions | Free |
@@ -31,10 +31,19 @@ pip install -e ".[dev]"
 # Create cache directory (SQLite dev mode)
 mkdir -p cache
 
-# Run API
+# Run API (port 8000)
 uvicorn api.main:app --reload --port 8000
 
-# Or with Docker
+# Run frontend (port 3000) — separate terminal
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. The frontend proxies scan requests to `http://localhost:8000/api/v1/scan`.
+
+```bash
+# Or with Docker (API only — frontend dev via npm run dev)
 docker compose up
 ```
 
@@ -71,13 +80,23 @@ Free tier: 750 hours/month. Sleeps after 15 minutes of inactivity (first request
 
 ## Vercel (Frontend)
 
+The frontend is a Vue 3 + Vite SPA. Vercel detects Vite automatically.
+
 ```bash
 npm i -g vercel
 cd frontend
+npm install
+npm run build       # outputs to frontend/dist/
 vercel deploy
 ```
 
-Or connect GitHub repo to Vercel, set `frontend/` as root directory. Auto-deploys on every push.
+Or connect the GitHub repo to Vercel with these settings:
+- **Root directory:** `frontend`
+- **Framework preset:** Vite
+- **Build command:** `npm run build`
+- **Output directory:** `dist`
+
+Auto-deploys on every push to `main`.
 
 ---
 

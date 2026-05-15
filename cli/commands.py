@@ -3,7 +3,10 @@ import json
 import os
 from enum import Enum
 
+from dotenv import load_dotenv
 import typer
+
+load_dotenv()
 
 from application.dto.scan_request import ScanRequestDTO
 from application.services.analyzer_service import AnalyzerService

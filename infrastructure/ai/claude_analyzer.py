@@ -7,7 +7,7 @@ from infrastructure.ai.prompts import PROMPTS
 
 
 class ClaudeAnalyzer(IAIAnalyzer):
-    MODEL = "claude-sonnet-4-20250514"
+    MODEL = "claude-sonnet-4-6"
 
     async def analyze(self, relations_text: str, mode: str = "technical") -> str:
         async with httpx.AsyncClient(timeout=30) as client:

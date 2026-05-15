@@ -1,219 +1,201 @@
-# Domain-Fingerprinting-Tool 🔍
+<div align="center">
 
-> **Domain Fingerprinting Tool** — One signal in. The whole adversarial network out.
+# Domain Fingerprinting Tool
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-async-green.svg)](https://fastapi.tiangolo.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+**One signal in. The whole adversarial network out.**
+
+[![Python](https://img.shields.io/badge/Python-3.11+-3b82f6?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-async-10b981?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Vue 3](https://img.shields.io/badge/Vue-3.x-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![Claude AI](https://img.shields.io/badge/Claude-Sonnet_4-8b5cf6?style=flat-square)](https://www.anthropic.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-f59e0b?style=flat-square)](LICENSE)
+
+</div>
 
 ---
 
-## What is Domain-Fingerprinting-Tool?
+## What is this?
 
-Domain-Fingerprinting-Tool takes a single domain, URL, or IP address and traces it back to its full adversarial network. It maps shared infrastructure, overlapping identities, and coordinated threat operations — the difference between cutting a branch and pulling a root.
+Most threat intelligence tools stop at the artifact — the domain, the IP, the hash. DFT goes further.
 
-Detection tools catch the artifact. Domain-Fingerprinting-Tool exposes the system behind it.
+Give it a single domain. It traces the infrastructure behind it: shared IPs, overlapping TLS fingerprints, re-used analytics IDs, subdomain clusters. It builds a **visual graph** of the entire network and asks Claude to explain what it means in plain language.
+
+The difference between cutting a branch and pulling the root.
+
+---
+
+## Demo
 
 ---
 
 ## How it works
 
 ```
-Input (domain / URL / IP)
+Input  ──────────────────────────────────────────────────────────────
+  domain / URL / IP
         │
         ▼
-Cache Shield (SQLite dev / Redis prod) ── HIT ──▶ skip to Output
+Cache Shield  ───────────────────────────────── HIT → skip to Output
+  SQLite (dev)  /  Redis (prod)
         │ MISS
         ▼
-Collector Layer  (all I/O, fully async — asyncio.gather)
-  ├── WHOIS          asyncwhois
-  ├── DNS            dns.asyncresolver
-  ├── urlscan.io     httpx async
-  ├── crt.sh         asyncpg  (direct PostgreSQL, unlimited free)
-  ├── HackerTarget   httpx async
-  └── JARM           asyncio.to_thread()  ← sync lib, isolated
+Collector Layer  (parallel — asyncio.gather) ───────────────────────
+  ├── WHOIS          registrar, creation date, name servers
+  ├── DNS            A / MX / NS / TXT records
+  ├── urlscan.io     screenshot, analytics IDs, linked domains
+  ├── crt.sh         TLS certificate history, subdomain clusters
+  ├── HackerTarget   IP neighbors on same /24 block
+  └── JARM           TLS stack fingerprint → C2 signature match
         │
         ▼
-Analyzer Layer  (zero I/O — pure domain logic)
-  ├── Analytics ID overlap   (same GA/GTM = same operator)
-  ├── TLS + IP correlation   (subdomain / neighbor linking)
-  └── JARM matching          (hash vs C2 list → risk score 0–100)
+Analyzer Layer  (zero I/O — pure domain logic) ─────────────────────
+  ├── Analytics overlap   same GA / GTM tag → same operator
+  ├── IP correlation      neighbor clustering + subdomain linking
+  └── JARM scoring        hash vs known C2 list → risk score 0–100
         │
         ▼
-Graph Builder  (NetworkX → nodes + edges → JSON)
+Graph Builder  (NetworkX) ──────────────────────────────────────────
+  nodes: domain / ip / analytics_id / jarm_hash / subdomain
+  edges: resolves_to / ip_neighbor / analytics_shared / c2_match
         │
         ▼
-Data Prepper  (strip coordinates/colors → pure relational text)
-        │
-        ▼
-AI Analyzer  (Claude API)
+AI Analyzer  (Claude API) ──────────────────────────────────────────
   ├── Technical mode   →  senior threat analyst tone
   └── Executive mode   →  CISO briefing tone
         │
         ▼
-Output
-  ├── Interactive graph   D3.js  (Vercel)
-  ├── REST API            FastAPI (Render.com)
-  └── CLI                 typer
+Output ─────────────────────────────────────────────────────────────
+  ├── Interactive graph   Vue 3 + D3.js  (force-directed, zoomable)
+  ├── REST API            FastAPI        POST /api/v1/scan
+  └── CLI                 typer          python -m cli.commands scan
 ```
 
 ---
 
-## Project structure
+## Features
 
-Clean Architecture with DDD layering. Dependency rule: outer layers depend on inner layers, never the reverse.
-
-```
-Domain-Fingerprinting-Tool/
-│
-├── core/                          # Enterprise business rules — no dependencies
-│   ├── domain/
-│   │   ├── entities/
-│   │   │   ├── scan.py            # Scan aggregate root
-│   │   │   ├── domain_target.py   # DomainTarget value object
-│   │   │   ├── threat_graph.py    # ThreatGraph entity
-│   │   │   └── risk_score.py      # RiskScore value object
-│   │   ├── events/
-│   │   │   ├── scan_completed.py
-│   │   │   └── threat_detected.py
-│   │   └── exceptions/
-│   │       ├── invalid_domain.py
-│   │       └── scan_failed.py
-│   └── ports/                     # Abstract interfaces (contracts)
-│       ├── collector_port.py      # ICollector ABC
-│       ├── cache_port.py          # ICache ABC
-│       ├── ai_port.py             # IAIAnalyzer ABC
-│       └── graph_port.py          # IGraphBuilder ABC
-│
-├── application/                   # Application business rules — orchestration
-│   ├── use_cases/
-│   │   ├── scan_domain.py         # ScanDomainUseCase
-│   │   ├── get_scan_result.py     # GetScanResultUseCase
-│   │   └── build_threat_graph.py  # BuildThreatGraphUseCase
-│   ├── services/
-│   │   ├── collector_service.py   # asyncio.gather orchestration
-│   │   ├── analyzer_service.py    # pure analysis logic
-│   │   └── data_prepper.py        # graph → LLM-ready text
-│   └── dto/
-│       ├── scan_request.py        # ScanRequestDTO
-│       └── scan_response.py       # ScanResponseDTO
-│
-├── infrastructure/                # Frameworks & drivers — all I/O lives here
-│   ├── cache/
-│   │   ├── sqlite_cache.py        # ICache → SQLite (dev)
-│   │   └── redis_cache.py         # ICache → Redis (prod)
-│   ├── ai/
-│   │   ├── claude_analyzer.py     # IAIAnalyzer → Claude API
-│   │   └── prompts.py             # technical / executive prompts
-│   └── external_apis/
-│       ├── whois_collector.py     # ICollector → asyncwhois
-│       ├── dns_collector.py       # ICollector → dns.asyncresolver
-│       ├── urlscan_collector.py   # ICollector → urlscan.io httpx
-│       ├── crtsh_collector.py     # ICollector → asyncpg PostgreSQL
-│       ├── hackertarget_collector.py  # ICollector → httpx
-│       ├── jarm_collector.py      # ICollector → asyncio.to_thread
-│       └── networkx_graph.py      # IGraphBuilder → NetworkX
-│
-├── api/                           # Delivery mechanism — FastAPI
-│   ├── routes/
-│   │   ├── scan.py                # POST /api/v1/scan
-│   │   └── health.py              # GET  /api/v1/health
-│   ├── middleware/
-│   │   ├── rate_limiter.py
-│   │   └── error_handler.py
-│   └── main.py                    # FastAPI app factory
-│
-├── cli/
-│   └── commands.py                # typer CLI entry point
-│
-├── tests/
-│   ├── unit/
-│   │   ├── core/
-│   │   │   └── test_risk_score.py
-│   │   └── application/
-│   │       ├── test_analyzer_service.py
-│   │       └── test_data_prepper.py
-│   ├── integration/
-│   │   ├── test_whois_collector.py
-│   │   └── test_crtsh_collector.py
-│   └── e2e/
-│       └── test_scan_domain.py
-│
-├── frontend/
-│   ├── index.html
-│   └── graph.js                   # D3.js visualization
-│
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── COLLECTORS.md
-│   ├── AI_LAYER.md
-│   └── DEPLOYMENT.md
-│
-├── pyproject.toml                 # dependencies + tooling config
-├── Dockerfile
-├── docker-compose.yml
-├── .env.example
-└── README.md
-```
+| Feature | What it does |
+|---|---|
+| **Parallel collection** | All 6 collectors run concurrently via `asyncio.gather()` — no sequential waits |
+| **Cache shield** | Results cached 24h. API rate limits never wasted on duplicate domains |
+| **JARM fingerprinting** | Identifies TLS stack: Cloudflare, bare Nginx, or known C2 malware signatures |
+| **crt.sh via PostgreSQL** | Direct DB connection to crt.sh — unlimited, no API key, no rate limit |
+| **Analytics ID overlap** | Same Google Analytics / GTM tag across different domains = same operator |
+| **Risk scoring** | 0–100 score from JARM C2 match, domain age, analytics overlap, and IP clustering |
+| **AI dual-mode** | Technical analyst depth or executive CISO brevity — same data, different lens |
+| **Force-directed graph** | Interactive D3.js visualization — click nodes, inspect metadata, zoom/pan |
+| **Side panel** | Node inspector, full node list, AI analysis — tab-based, zero layout shift |
+| **Zero infra cost** | Render.com backend + Vercel frontend, both free tier |
 
 ---
 
-## Features (V1)
+## Tech stack
 
-- **Async-first** — all collectors run concurrently via `asyncio.gather()`
-- **Cache shield** — sits between input and collectors, API limits never wasted
-- **JARM fingerprinting** — TLS stack identification (Cloudflare? bare Nginx? C2 malware?)
-- **crt.sh integration** — unlimited free subdomain/TLS overlap via direct PostgreSQL
-- **Analytics ID overlap** — same GA/GTM code across sites = same operator
-- **AI-powered summary** — Claude API turns raw graph into actionable intelligence
-- **Dual output mode** — technical analyst or executive CISO briefing
-- **Zero infra cost** — Render.com (backend) + Vercel (frontend)
-- **Clean Architecture** — DDD layering, ports & adapters, fully testable
-
----
-
-## Roadmap
-
-| Version | Description |
-|---------|-------------|
-| **V1** | Pipeline — static, all collectors run in parallel, AI summarizes at the end |
-| **V2** | Agentic Decision Engine — LangGraph orchestrates collectors as tools, AI decides what to query and when |
-
-In V2, if the AI sees Cloudflare on DNS it skips JARM and jumps to urlscan analytics. The Python functions from V1 become LangGraph tools — zero refactor, same domain logic.
+| Layer | Technology |
+|---|---|
+| **Backend** | Python 3.11, FastAPI, asyncio |
+| **Frontend** | Vue 3 (Composition API), Vite, D3.js v7 |
+| **Graph engine** | NetworkX |
+| **AI** | Anthropic Claude (claude-sonnet-4-6) |
+| **Cache** | SQLite (dev), Redis (prod) |
+| **Collectors** | asyncwhois, dns.asyncresolver, httpx, asyncpg, python-jarm |
+| **Architecture** | Clean Architecture + DDD (ports & adapters) |
 
 ---
 
 ## Quick start
 
+**1. Clone and install**
+
 ```bash
 git clone https://github.com/ATalhaTimur/Domain-Fingerprinting-Tool
 cd Domain-Fingerprinting-Tool
 pip install -e ".[dev]"
-cp .env.example .env        # add your API keys
-python -m cli.commands scan example.com --mode technical
+cp .env.example .env       # fill in your API keys
 ```
 
-Or with Docker:
+**2. Start the backend**
+
+```bash
+uvicorn api.main:app --reload --port 8000
+```
+
+**3. Start the frontend**
+
+```bash
+cd frontend
+npm install
+npm run dev                # → http://localhost:3000
+```
+
+**Or with Docker**
 
 ```bash
 docker compose up
 ```
 
+**Or CLI only (no browser)**
+
+```bash
+python -m cli.commands scan github.com --mode technical
+python -m cli.commands scan github.com --mode executive
+```
+
 ---
 
-## API keys needed
+## API keys
 
-| Service | Free tier | Where to get |
-|---------|-----------|--------------|
-| urlscan.io | 100 scans/day | [urlscan.io/user/signup](https://urlscan.io/user/signup/) |
-| VirusTotal | 500 req/day, 4 req/min | [virustotal.com](https://www.virustotal.com/) |
-| HackerTarget | ~100 req/day | [hackertarget.com](https://hackertarget.com/) |
-| crt.sh | unlimited | no key — direct PostgreSQL |
-| WHOIS | unlimited | no key — asyncwhois |
-| Claude API | pay-per-token | [console.anthropic.com](https://console.anthropic.com/) |
+| Service | Free tier | Notes |
+|---|---|---|
+| [urlscan.io](https://urlscan.io/user/signup/) | 100 scans/day | Analytics IDs, screenshots |
+| [HackerTarget](https://hackertarget.com/) | ~100 req/day | IP neighbor discovery |
+| [Claude API](https://console.anthropic.com/) | Pay-per-token | AI analysis (cheap — ~512 tokens/scan) |
+| crt.sh | Unlimited | No key needed — direct PostgreSQL |
+| WHOIS | Unlimited | No key needed — asyncwhois |
+
+---
+
+## Architecture
+
+Clean Architecture with DDD layering. Dependencies point inward — `core` knows nothing about FastAPI, Redis, or httpx.
+
+```
+api / cli                 ← delivery mechanisms
+  └── infrastructure      ← frameworks, I/O, external APIs
+        └── application   ← use cases, orchestration
+              └── core    ← domain entities, ports (interfaces)
+```
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full layer breakdown, entity definitions, and dependency injection wiring.
+
+```
+Domain-Fingerprinting-Tool/
+├── core/                          # Enterprise rules — zero dependencies
+│   ├── domain/entities/           # Scan, DomainTarget, ThreatGraph, RiskScore
+│   └── ports/                     # ICollector, ICache, IAIAnalyzer, IGraphBuilder
+├── application/                   # Use cases + services + DTOs
+├── infrastructure/                # Adapters: collectors, cache, Claude, NetworkX
+├── api/                           # FastAPI routes + middleware
+├── cli/                           # typer CLI
+├── frontend/                      # Vue 3 + Vite SPA
+│   └── src/
+│       ├── composables/useScan.js # All scan state + API logic
+│       └── components/            # AppHeader, ScanToolbar, GraphView, SidePanel/*
+├── tests/                         # unit / integration / e2e
+└── docs/                          # ARCHITECTURE, COLLECTORS, AI_LAYER, DEPLOYMENT
+```
+
+---
+
+## Roadmap
+
+| | Version | Description |
+|---|---|---|
+| ✅ | **V1 — Pipeline** | Static parallel collection. All collectors fire at once, AI summarizes at the end. |
+| 🔜 | **V2 — Agentic** | LangGraph orchestrates collectors as tools. AI decides what to query and when. If it sees Cloudflare on DNS it skips JARM and jumps straight to analytics overlap. V1 collectors become LangGraph tools with zero refactor. |
 
 ---
 
 ## License
 
-MIT — build on it, learn from it, get hired with it.
+MIT — build on it, learn from it, ship it.
