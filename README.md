@@ -24,7 +24,7 @@ The difference between cutting a branch and pulling the root.
 
 ---
 
-## Demo
+
 
 ---
 
