@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+      - CACHE_BACKEND=sqlite
+      - SQLITE_PATH=/app/cache/Domain-Fingerprinting-Tool.db
+    env_file:
+      - .env
+    volumes:
+      - ./cache:/app/cache
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
