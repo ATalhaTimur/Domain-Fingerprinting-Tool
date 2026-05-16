@@ -16,6 +16,19 @@ class DataPrepper:
             lines.append(f"jarm_c2_match: {analysis['jarm_c2_match']}")
 
         if analysis.get("domain_age_days") is not None:
-            lines.append(f"domain_age_days: {analysis['domain_age_days']}")
+            lines.append(f"domain_age: {self._format_age(analysis['domain_age_days'])}")
 
         return "\n".join(lines)
+
+    @staticmethod
+    def _format_age(days: int) -> str:
+        if days < 30:
+            return f"{days} days"
+        if days < 365:
+            months = days // 30
+            return f"{months} month{'s' if months > 1 else ''}"
+        years  = days // 365
+        months = (days % 365) // 30
+        if months == 0:
+            return f"{years} year{'s' if years > 1 else ''}"
+        return f"{years} year{'s' if years > 1 else ''}, {months} month{'s' if months > 1 else ''}"

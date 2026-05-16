@@ -41,9 +41,11 @@ UA-99999999 → evil-phish.ru [analytics_id_shared]
 91.234.56.78 → 2ad2ad0002ad2ad00042d42d0000002ad2ad [jarm_hash]
 2ad2ad0002ad2ad00042d42d0000002ad2ad → Cobalt Strike C2 [c2_match]
 overall_risk_score: 84/100
-domain_age_days: 3
+domain_age: 8 days
 jarm_c2_match: Cobalt Strike default
 ```
+
+Domain age is formatted as human-readable text (`8 days`, `4 months`, `2 years, 3 months`) — never raw day counts.
 
 Pure relational text. The model receives exactly what it needs: who is connected to what, and how.
 
@@ -57,48 +59,25 @@ Average scan produces 20–40 relation lines ≈ 300–500 tokens. System prompt
 
 Two modes. Same data. Different audiences.
 
-```python
-# infrastructure/ai/prompts.py
+Both prompts enforce a **fixed section structure** so every scan produces output in the same format. Claude cannot add sections, reorder them, or include "next steps" / "further investigation" language.
 
-TECHNICAL_PROMPT = """
-You are a senior threat intelligence analyst with expertise in OSINT,
-phishing infrastructure, and adversarial network attribution.
-
-You will receive a list of domain/IP/infrastructure relationships discovered
-during an automated scan. Your task:
-
-1. Identify the key threat indicators (IOCs)
-2. Describe the likely attacker TTPs (tactics, techniques, procedures)
-3. Assess operator attribution signals (shared infrastructure, analytics overlap, JARM fingerprint)
-4. Assign a confidence level: Low / Medium / High
-5. Recommend next investigative steps
-
-Be specific. Reference the actual domains, IPs, and hashes from the data.
-Do not speculate beyond what the data supports.
-Maximum 250 words.
-"""
-
-EXECUTIVE_PROMPT = """
-You are a security consultant briefing a non-technical CISO.
-
-You will receive technical intelligence data about a suspicious domain.
-Your task:
-
-1. Explain the risk in plain language — no jargon
-2. Describe what an attacker could do with this infrastructure
-3. State the business impact clearly
-4. Give one recommended action
-
-Do not use acronyms without explaining them first.
-Lead with the most important finding.
-Maximum 200 words.
-"""
-
-PROMPTS = {
-    "technical": TECHNICAL_PROMPT,
-    "executive": EXECUTIVE_PROMPT,
-}
+**Technical output structure:**
 ```
+## Infrastructure Overview
+## Threat Indicators
+## Attribution Analysis
+## Risk Assessment
+```
+
+**Executive output structure:**
+```
+## Summary
+## Key Finding
+## Business Impact
+## Recommended Action
+```
+
+See `infrastructure/ai/prompts.py` for the full prompt text.
 
 The user selects mode via a toggle in the frontend or `--mode` flag in CLI. The same DataPrepper output feeds both. No extra token cost — just a different system prompt.
 
