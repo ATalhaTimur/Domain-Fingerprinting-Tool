@@ -26,7 +26,8 @@ The difference between cutting a branch and pulling the root.
 ## DEMO
 <img width="1512" height="828" alt="Ekran Resmi 2026-05-16 11 52 23" src="https://github.com/user-attachments/assets/e70480b2-5141-4e26-bc52-2fff9452b666" />
 
-<img width="1508" height="897" alt="Ekran Resmi 2026-05-16 11 52 13" src="https://github.com/user-attachments/assets/238f80ec-3f8e-4da4-b322-b348551566b4" />
+<img width="1504" height="814" alt="Ekran Resmi 2026-05-16 11 52 13" src="https://github.com/user-attachments/assets/571b2d22-d75d-4363-9b79-eba3f4c881ca" />
+
 
 
 ---
